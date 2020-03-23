@@ -9,41 +9,36 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Part 1 Cleaning Data Frame
+### Part one: Cleaning Data Frame
 
 ```{r}
 library(ggplot2)
-library(classdata)
 library(dplyr)
 library(tidyr)
 library(readxl)
 # import defense sheet
-defense <- read_excel('/Users/jessie/Desktop/ds202/cyclonesFootball2019.xlsx', sheet='Defensive')
-str(defense)
+defense <- read_excel('cyclonesFootball2019.xlsx', sheet='Defensive')
 # import offense sheet
-offense <- read_excel('/Users/jessie/Desktop/ds202/cyclonesFootball2019.xlsx', sheet='Offensive')
-str(offense)
+offense <- read_excel('cyclonesFootball2019.xlsx', sheet='Offensive')
 # import biography sheet
-biography <- read_excel('/Users/jessie/Desktop/ds202/cyclonesFootball2019.xlsx', sheet='Biography')
-str(biography)
+biography <- read_excel('cyclonesFootball2019.xlsx', sheet='Biography')
 ```
 
-The player names and opponent names are factors.
+1. The player names and opponent names are factors.
 
 ```{r}
-defense$Name <- factor(defense$Name)
-defense$Opponent_Opponent <- factor(defense$Opponent_Opponent)
-str(defense)
+defense$Name <- as.factor(defense$Name)
+defense$Opponent_Opponent <- as.factor(defense$Opponent_Opponent)
 
-offense$Name <- factor(offense$Name)
-offense$Opponent_Opponent <- factor(offense$Opponent_Opponent)
-str(offense)
+offense$Name <- as.factor(offense$Name)
+offense$Opponent_Opponent <- as.factor(offense$Opponent_Opponent)
+
+biography$Name <- as.factor(biography$Name)
 ```
 
-All offensive and defensive statistics are numerical. The Weight column in biogrpahy is also numeric.
+2. All offensive and defensive statistics are numerical. The Weight column in biogrpahy is also numeric.
 
 ```{r}
-
 defClean <- defense %>%
   mutate(Tackles_Solo = as.numeric(Tackles_Solo),
          Tackles_ASST = as.numeric(Tackles_ASST),
@@ -54,10 +49,7 @@ defClean <- defense %>%
          Turnover_INT = as.numeric(Turnover_INT),
          Pass_QBH = as.numeric(Pass_QBH),
          Pass_PB = as.numeric(Pass_PB))
-str(defClean)
 
-offense$Name <- factor(offense$Name)
-offense$Opponent_Opponent <- factor(offense$Opponent_Opponent)
 names(offense)[9] <- "Passing_CMP_ATT"
 offClean <- offense %>%
   mutate(Rushing_ATT = as.numeric(Rushing_ATT),
@@ -70,77 +62,137 @@ offClean <- offense %>%
          Passing_YDS = as.numeric(Passing_YDS),
          Passing_TD = as.numeric(Passing_TD),
          Passing_INT = as.numeric(Passing_INT))
-names(offense)[9] <- "Passing_CMP_ATT"
 offClean[is.na(offClean)] = 0
-str(offClean)
 
 bioClean <- biography %>%
   mutate(Weight = as.numeric(Weight))
-str(bioClean)
-
 ```
 
-Change the Height column in biogrpahy into numeric. 
+3. Change the Height column in biogrpahy into numeric. 
 
 ```{r}
-bioClean<-biography %>% separate(Height, into = c("feet", "inch"))
-bioClean <- bioClean %>%
-  mutate(feet = as.numeric(feet),
-         inch = as.numeric(inch))
-bioClean$Height <- bioClean$feet+bioClean$inch/12
-bioClean
+bioClean <- bioClean %>% 
+  separate('Height', into = c("Feet", "Inch")) %>%
+  mutate_at('Feet', as.numeric)%>%
+  mutate_at('Inch', as.numeric)
+bioClean$Height <- bioClean$Inch + bioClean$Feet * 12
+head(bioClean)
 ```
 
 By cleaning the three data frames in R, at the end of this step you should have the following three clean data frames: defClean, offClean, and bioClean. Print the structures of these data frames.
 
 ```{r}
-defClean
-offClean
-bioClean
+str(defClean)
+str(offClean)
+str(bioClean)
 ```
  
-Part two: Tidying 
+### Part two: Tidying (1)
 
-Reformat the defClean data frame into a tidy format using pivot_longer. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a new key column named Statistic.
+1. Reformat the defClean data frame into a tidy format using pivot_longer. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a new key column named Statistic.
 
 ```{r}
-defClean1 <- defClean %>% pivot_longer(3:11, names_to = 'Statistic', values_to = 'score')
-head(defClean1)
+defClean <- defClean %>% 
+  pivot_longer(Tackles_Solo:Pass_PB, names_to = 'Statistic')
+head(defClean)
 ```
 
-Part three: Joining data frames
+2. Create a histogram for each defensive statistic. Use facet_wrap to draw all histograms in a single plot. What defensive skills are rare?
+
+```{r}
+defClean %>% 
+  ggplot(aes(value)) + geom_histogram(binwidth = 0.5) + facet_wrap(~Statistic)
+```
+From the defensive histograms, the Tackles_Sack, Turnover_FF, Turnover_FR, Turnover_INT skills are rare.
+
+3. Did ISU have better defense against West Virginia or Kansas State? Answer this question by creating a scatterplot with x-axis being the number of solo tackles (by each player) against West Virginia, and y-axis being that against Kansas State. A large number of solo tackles indicates good defense.
+
+```{r}
+defClean %>%
+  filter(Statistic == "Tackles_Solo", Opponent_Opponent %in% c("West Virginia", "Kansas State")) %>%
+  spread(Opponent_Opponent,value) %>%
+  ggplot(aes(x = `West Virginia`, y = `Kansas State`)) + geom_count() + geom_abline(slope = -1, intercept = 5, colour = "orange")
+```
+
+Base on the scatterplot, most points are below the line. It means, most individual players have a higher number of solo tackles against Kansas State than against West Virginia.
+
+### Part two: Tidying (2)
+
+1. Separate the Hometown column into two columns, namely the city and the state. Print the first few rows of these two columns. (Hint: look at the sep= argument of separate)
+
+```{r}
+bioClean <- bioClean %>%
+  separate(Hometown, into = c('City', 'State'), sep = ",")
+head(bioClean)
+```
+
+2. How many players are there from each state?
+
+```{r}
+table(bioClean$State)
+```
+
+### Part three: Joining data frames
 
 1. Find where do the offensive players come from by joining the offensive data and player biography data appropriately.
 
 ```{r}
-left<- left_join(offClean, bioClean, by = "Name")
-left
+left <- left_join(offClean, bioClean, by = "Name")
+leftns <- left %>%
+   select("Name", "State")
+unique(leftns)
 ```
 
+You can looking for hometown column from the table then find where do the offensive players come from.
 
 2. Is there a relationship between the weight of a player and the receiving yards (Receiving_YDS)?
 
 ```{r,fig.width=18, fig.height=20}
-ggplot(data =left, aes(x = Weight, y = Receiving_YDS)) +
+full <- full_join(offClean, bioClean, by = "Name")
+ggplot(data =full, aes(x = Weight, y = Receiving_YDS)) +
   geom_point()
 ```
  
 The histogram does not show obvious relationship between weight and Receiving_YDS. However, But in weight 183, it's more evenly distributed in Receiving_YDS.
 
+3. How do the performance of quarterback Brock Purdy relate to the performance of the ISU team?
+
 ```{r}
-inner<- inner_join(offClean, bioClean, by = "Name")
-inner
-pb <-inner[inner$Name %in% c("Purdy, Brock"), ]
+inner <- inner_join(offClean, bioClean, by = "Name")
+TeamISU <- inner %>%
+  filter(State == " Iowa") %>%
+  mutate(Rushing_YDS = sum(Rushing_YDS, na.rm = T)) %>%
+  mutate(Rushing_ATT = sum(Rushing_ATT, na.rm = T)) %>%
+  mutate(Rushing_TD = sum(Rushing_TD, na.rm = T)) %>%
+  mutate(Receiving_REC = sum(Receiving_REC, na.rm = T)) %>%
+  mutate(Receiving_YDS = sum(Receiving_YDS, na.rm = T)) %>%
+  mutate(Receiving_TD = sum(Receiving_TD, na.rm = T)) %>%
+  mutate(Passing_CMP_ATT = sum(Passing_CMP_ATT, na.rm = T)) %>%
+  mutate(Passing_YDS = sum(Passing_YDS, na.rm = T)) %>%
+  mutate(Passing_TD = sum(Passing_TD, na.rm = T)) %>%
+  mutate(Passing_INT = sum(Passing_INT, na.rm = T))  
 
-pb1 <- pb %>%
-  select("Rushing_ATT", "Rushing_YDS",  "Rushing_TD", "Passing_YDS", "Passing_TD", "Passing_INT")
-pb1
+BP <- inner %>%
+  filter(Name == "Purdy, Brock") %>%
+  mutate(Rushing_YDS = sum(Rushing_YDS, na.rm = T)) %>%
+  mutate(Rushing_ATT = sum(Rushing_ATT, na.rm = T)) %>%
+  mutate(Rushing_TD = sum(Rushing_TD, na.rm = T)) %>%
+  mutate(Receiving_REC = sum(Receiving_REC, na.rm = T)) %>%
+  mutate(Receiving_YDS = sum(Receiving_YDS, na.rm = T)) %>%
+  mutate(Receiving_TD = sum(Receiving_TD, na.rm = T)) %>%
+  mutate(Passing_CMP_ATT = sum(Passing_CMP_ATT, na.rm = T)) %>%
+  mutate(Passing_YDS = sum(Passing_YDS, na.rm = T)) %>%
+  mutate(Passing_TD = sum(Passing_TD, na.rm = T)) %>%
+  mutate(Passing_INT = sum(Passing_INT, na.rm = T))
 
-hist(pb1$Rushing_ATT)
-hist(pb1$Rushing_YDS)
-hist(pb1$Rushing_TD)
-hist(pb1$Passing_YDS)
-hist(pb1$Passing_TD)
-hist(pb1$Passing_INT)
 ```
 
+4. Explore more. You may in addition explore the 2018 data here. Raise a question that can be answered only by looking at two or more data frames. Then answer that question.
+
+Is there a relationship between the Height(in inch) of a player and the receiving yards (Receiving_YDS)?
+```{r}
+ggplot(data =full, aes(x = Height, y = Receiving_YDS)) +
+  geom_point()
+```
+
+The histogram does not show obvious relationship between height and Receiving_YDS. However, But in height 70, it's more evenly distributed in Receiving_YDS.
