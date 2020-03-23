@@ -157,35 +157,48 @@ The histogram does not show obvious relationship between weight and Receiving_YD
 
 3. How do the performance of quarterback Brock Purdy relate to the performance of the ISU team?
 
-```{r}
+```{r,fig.width=12, fig.height=5}
 inner <- inner_join(offClean, bioClean, by = "Name")
 TeamISU <- inner %>%
   filter(State == " Iowa") %>%
-  mutate(Rushing_YDS = sum(Rushing_YDS, na.rm = T)) %>%
-  mutate(Rushing_ATT = sum(Rushing_ATT, na.rm = T)) %>%
-  mutate(Rushing_TD = sum(Rushing_TD, na.rm = T)) %>%
-  mutate(Receiving_REC = sum(Receiving_REC, na.rm = T)) %>%
-  mutate(Receiving_YDS = sum(Receiving_YDS, na.rm = T)) %>%
-  mutate(Receiving_TD = sum(Receiving_TD, na.rm = T)) %>%
-  mutate(Passing_CMP_ATT = sum(Passing_CMP_ATT, na.rm = T)) %>%
-  mutate(Passing_YDS = sum(Passing_YDS, na.rm = T)) %>%
-  mutate(Passing_TD = sum(Passing_TD, na.rm = T)) %>%
-  mutate(Passing_INT = sum(Passing_INT, na.rm = T))  
-
+  group_by(Opponent_Opponent) %>%
+  summarize(Rushing_YDS = sum(Rushing_YDS, na.rm = T),
+            Rushing_ATT = sum(Rushing_ATT, na.rm = T),
+            Rushing_TD = sum(Rushing_TD, na.rm = T),
+            Receiving_REC = sum(Receiving_REC, na.rm = T),
+            Receiving_YDS = sum(Receiving_YDS, na.rm = T),
+            Receiving_TD = sum(Receiving_TD, na.rm = T),
+            Passing_CMP_ATT = sum(Passing_CMP_ATT, na.rm = T),
+            Passing_YDS = sum(Passing_YDS, na.rm = T),
+            Passing_TD = sum(Passing_TD, na.rm = T),
+            Passing_INT = sum(Passing_INT, na.rm = T)) %>%
+  mutate(ID = "Team ISU")
 BP <- inner %>%
   filter(Name == "Purdy, Brock") %>%
-  mutate(Rushing_YDS = sum(Rushing_YDS, na.rm = T)) %>%
-  mutate(Rushing_ATT = sum(Rushing_ATT, na.rm = T)) %>%
-  mutate(Rushing_TD = sum(Rushing_TD, na.rm = T)) %>%
-  mutate(Receiving_REC = sum(Receiving_REC, na.rm = T)) %>%
-  mutate(Receiving_YDS = sum(Receiving_YDS, na.rm = T)) %>%
-  mutate(Receiving_TD = sum(Receiving_TD, na.rm = T)) %>%
-  mutate(Passing_CMP_ATT = sum(Passing_CMP_ATT, na.rm = T)) %>%
-  mutate(Passing_YDS = sum(Passing_YDS, na.rm = T)) %>%
-  mutate(Passing_TD = sum(Passing_TD, na.rm = T)) %>%
-  mutate(Passing_INT = sum(Passing_INT, na.rm = T))
-
+  group_by(Opponent_Opponent) %>%
+  summarize(Rushing_YDS = sum(Rushing_YDS, na.rm = T),
+            Rushing_ATT = sum(Rushing_ATT, na.rm = T),
+            Rushing_TD = sum(Rushing_TD, na.rm = T),
+            Receiving_REC = sum(Receiving_REC, na.rm = T),
+            Receiving_YDS = sum(Receiving_YDS, na.rm = T),
+            Receiving_TD = sum(Receiving_TD, na.rm = T),
+            Passing_CMP_ATT = sum(Passing_CMP_ATT, na.rm = T),
+            Passing_YDS = sum(Passing_YDS, na.rm = T),
+            Passing_TD = sum(Passing_TD, na.rm = T),
+            Passing_INT = sum(Passing_INT, na.rm = T)) %>%
+  mutate(ID = "Brock Purdy")
+Sum <- full_join(TeamISU, BP, by = c("ID", "Opponent_Opponent", "Rushing_YDS", "Rushing_ATT", "Rushing_TD", "Receiving_REC", "Receiving_YDS", "Receiving_TD", "Passing_CMP_ATT", "Passing_YDS", "Passing_TD", "Passing_INT"))
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Rushing_YDS, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Rushing_ATT, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Rushing_TD, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Receiving_YDS, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Receiving_REC, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Passing_YDS, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Passing_TD, group = ID, col = ID)) + geom_line()
+ggplot(data = Sum, aes(x = Opponent_Opponent, y = Passing_INT, group = ID, col = ID)) + geom_line()
 ```
+
+There is no obvious relationship betweenthe performance of quarterback Brock Purdy and the performance of the ISU team. Brock Purdy performances well in rushing skill. But he performances less than ISU team in receiving and passing skills.
 
 4. Explore more. You may in addition explore the 2018 data here. Raise a question that can be answered only by looking at two or more data frames. Then answer that question.
 
