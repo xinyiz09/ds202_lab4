@@ -1,0 +1,146 @@
+---
+title: "team"
+author: "Xinyi Zhu, Han Sun"
+date: "3/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Part 1 Cleaning Data Frame
+
+```{r}
+library(ggplot2)
+library(classdata)
+library(dplyr)
+library(tidyr)
+library(readxl)
+# import defense sheet
+defense <- read_excel('/Users/jessie/Desktop/ds202/cyclonesFootball2019.xlsx', sheet='Defensive')
+str(defense)
+# import offense sheet
+offense <- read_excel('/Users/jessie/Desktop/ds202/cyclonesFootball2019.xlsx', sheet='Offensive')
+str(offense)
+# import biography sheet
+biography <- read_excel('/Users/jessie/Desktop/ds202/cyclonesFootball2019.xlsx', sheet='Biography')
+str(biography)
+```
+
+The player names and opponent names are factors.
+
+```{r}
+defense$Name <- factor(defense$Name)
+defense$Opponent_Opponent <- factor(defense$Opponent_Opponent)
+str(defense)
+
+offense$Name <- factor(offense$Name)
+offense$Opponent_Opponent <- factor(offense$Opponent_Opponent)
+str(offense)
+```
+
+All offensive and defensive statistics are numerical. The Weight column in biogrpahy is also numeric.
+
+```{r}
+
+defClean <- defense %>%
+  mutate(Tackles_Solo = as.numeric(Tackles_Solo),
+         Tackles_ASST = as.numeric(Tackles_ASST),
+         Tackles_TFL = as.numeric(Tackles_TFL),
+         Tackles_Sack = as.numeric(Tackles_Sack),
+         Turnover_FF = as.numeric(Turnover_FF),
+         Turnover_FR = as.numeric(Turnover_FR),
+         Turnover_INT = as.numeric(Turnover_INT),
+         Pass_QBH = as.numeric(Pass_QBH),
+         Pass_PB = as.numeric(Pass_PB))
+str(defClean)
+
+offense$Name <- factor(offense$Name)
+offense$Opponent_Opponent <- factor(offense$Opponent_Opponent)
+names(offense)[9] <- "Passing_CMP_ATT"
+offClean <- offense %>%
+  mutate(Rushing_ATT = as.numeric(Rushing_ATT),
+         Rushing_YDS = as.numeric(Rushing_YDS),
+         Rushing_TD = as.numeric(Rushing_TD),
+         Receiving_REC = as.numeric(Receiving_REC),
+         Receiving_YDS = as.numeric(Receiving_YDS),
+         Receiving_TD = as.numeric(Receiving_TD),
+         Passing_CMP_ATT = as.numeric(Passing_CMP_ATT),
+         Passing_YDS = as.numeric(Passing_YDS),
+         Passing_TD = as.numeric(Passing_TD),
+         Passing_INT = as.numeric(Passing_INT))
+names(offense)[9] <- "Passing_CMP_ATT"
+offClean[is.na(offClean)] = 0
+str(offClean)
+
+bioClean <- biography %>%
+  mutate(Weight = as.numeric(Weight))
+str(bioClean)
+
+```
+
+Change the Height column in biogrpahy into numeric. 
+
+```{r}
+bioClean<-biography %>% separate(Height, into = c("feet", "inch"))
+bioClean <- bioClean %>%
+  mutate(feet = as.numeric(feet),
+         inch = as.numeric(inch))
+bioClean$Height <- bioClean$feet+bioClean$inch/12
+bioClean
+```
+
+By cleaning the three data frames in R, at the end of this step you should have the following three clean data frames: defClean, offClean, and bioClean. Print the structures of these data frames.
+
+```{r}
+defClean
+offClean
+bioClean
+```
+ 
+Part two: Tidying 
+
+Reformat the defClean data frame into a tidy format using pivot_longer. The type of statistic (Tackles_Solo, Tackles_ASST, etc) is added as a new key column named Statistic.
+
+```{r}
+defClean1 <- defClean %>% pivot_longer(3:11, names_to = 'Statistic', values_to = 'score')
+head(defClean1)
+```
+
+Part three: Joining data frames
+
+1. Find where do the offensive players come from by joining the offensive data and player biography data appropriately.
+
+```{r}
+left<- left_join(offClean, bioClean, by = "Name")
+left
+```
+
+
+2. Is there a relationship between the weight of a player and the receiving yards (Receiving_YDS)?
+
+```{r,fig.width=18, fig.height=20}
+ggplot(data =left, aes(x = Weight, y = Receiving_YDS)) +
+  geom_point()
+```
+ 
+The histogram does not show obvious relationship between weight and Receiving_YDS. However, But in weight 183, it's more evenly distributed in Receiving_YDS.
+
+```{r}
+inner<- inner_join(offClean, bioClean, by = "Name")
+inner
+pb <-inner[inner$Name %in% c("Purdy, Brock"), ]
+
+pb1 <- pb %>%
+  select("Rushing_ATT", "Rushing_YDS",  "Rushing_TD", "Passing_YDS", "Passing_TD", "Passing_INT")
+pb1
+
+hist(pb1$Rushing_ATT)
+hist(pb1$Rushing_YDS)
+hist(pb1$Rushing_TD)
+hist(pb1$Passing_YDS)
+hist(pb1$Passing_TD)
+hist(pb1$Passing_INT)
+```
+
